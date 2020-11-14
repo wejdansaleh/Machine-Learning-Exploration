@@ -1,0 +1,93 @@
+---
+title: "Exe#9_Decision Trees"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Helper packages
+library(dplyr)       # for data wrangling
+library(ggplot2)     # for awesome plotting
+
+# Modeling packages
+library(rpart)       # direct engine for decision tree application
+library(caret)       # meta engine for decision tree application
+library(ranger)
+library(h2o)
+
+# Model interpretability packages
+library(rpart.plot)  # for plotting decision trees
+library(vip)         # for feature importance
+library(pdp)         # for feature effects
+```
+
+# Using the Boston housing data set from the pdp package,
+```{r echo=FALSE}
+boston <- pdp::boston
+
+# initial dimension
+dim(boston)
+
+set.seed(123)
+split <- rsample::initial_split(boston, strata = "cmedv", prop = 0.7)
+boston_train <- rsample::training(split)
+boston_test  <- rsample::testing(split)
+```
+
+# 1. Apply a decision tree model with all features.
+
+```{r }
+boston_dt1 <- rpart(
+  formula = cmedv ~ .,
+  data    = boston_train,
+  method  = "anova"
+)
+boston_dt1
+
+```
+
+```{r }
+rpart.plot(boston_dt1)
+```
+
+# 2.How many internal splitting nodes optimize model performance?
+
+```{r }
+
+summary(boston_dt1)
+
+```
+
+# 3. What are the predicted values and SEE in the terminal nodes?
+
+```{r }
+## fit tree using rpart
+boston_dt2 <- rpart(
+    formula = cmedv ~ .,
+    data    = boston_train,
+    method  = "anova", 
+    control = list(cp = 0, xval = 10)
+)
+
+plotcp(boston_dt2)
+abline(v = 11, lty = "dashed")
+
+# }
+```
+
+```{r echo=FALSE}
+boston_dt2$cptable
+```
+
+
+# 4.Identify the first feature split node and explain how it is splitting this feature.
+
+
+# 5.Which 10 features are considered most influential? Are these the same features that have been influential in previous models?
+
+```{r echo=FALSE}
+vip(boston_dt2, num_features = 10, geom = "point")
+```
+
+ 
