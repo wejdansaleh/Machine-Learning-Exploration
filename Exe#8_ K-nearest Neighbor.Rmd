@@ -1,0 +1,110 @@
+---
+title: "K-nearest Neighbor"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)      # for data wrangling
+library(ggplot2)    # for awesome graphics
+library(rsample)    # for creating validation splits
+library(recipes)    # for feature engineering
+
+# Modeling packages
+library(caret)       # for fitting KNN models
+library(vip)      # for variable importance
+library(ISLR)
+
+```
+
+
+# Using the ISLR::Default dataset where the default variable is the response variable:
+
+```{r echo=FALSE}
+data('Default')
+
+set.seed(123)
+split <- initial_split(Default , prop =.7 )
+default_train <- training(split)
+default_test <- testing(split)
+```
+
+# 1. Apply a KNN model with all features. Use a grid search to assess values of k ranging from 2-200 that seeks to optimize the “ROC” metric.
+```{r echo=FALSE}
+
+
+# Create a hyperparameter grid search
+hyper_grid <- expand.grid(k = seq(2, 200, by = 2))
+
+cv <- trainControl(
+  method = "repeatedcv", 
+  number = 10, 
+  repeats = 5,
+  classProbs = TRUE,                 
+  summaryFunction = twoClassSummary
+)
+
+# Execute grid search
+knn_default <- train(
+ default ~.,
+ data = default_train,
+  method = "knn",
+  tuneGrid = hyper_grid,
+  preProc = c("center", "scale"),
+  trControl = cv
+)
+knn_default
+
+```
+
+# 2. Plot the grid search performance.
+```{r echo=FALSE}
+
+ggplot(knn_default)
+```
+
+# 3. What value for K optimizes model performance? What does this tell you about your data?
+
+```{r echo=FALSE}
+
+
+blueprint <- recipe(default ~., data = train) %>%
+  step_nzv(all_nominal())  %>%
+  step_integer(JobInvolvement) %>%
+  step_center(all_numeric(), -all_outcomes()) %>%
+  step_scale(all_numeric(), -all_outcomes()) 
+  
+
+  
+cv <- trainControl(
+  method = "repeatedcv", 
+  number = 10, 
+  repeats = 5
+)
+
+# Fit knn model and perform grid search
+knn_grid <- train(
+ blueprint, 
+ data = train,
+  method = "knn", 
+  trControl = cv, 
+  tuneGrid = hyper_grid,
+  metric = "ROC"
+)
+
+ggplot(knn_grid)
+```
+
+# 4. Plot the ROC curve for the optimal model.
+```{r echo=FALSE}
+
+ggplot(knn_grid)
+```
+
+# 5. Which 10 features are considered most influential? Are these the same features that have been influential in previous models?
+```{r echo=FALSE}
+
+importance <- vip(knn_default, num_features = 10)
+```
+
